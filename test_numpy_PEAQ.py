@@ -3,13 +3,13 @@ import torchaudio
 from numpy_PEAQ import PEAQ
 
 
-def print_as_frame(i):
+def print_as_frame(metrics, i):
     print('Ntot:\t', metrics['Ntot']['NRef'][i], metrics['Ntot']['NTest'][i])
     print('ModDiff:\t', metrics['ModDiff']['Mt1B'][i], metrics['ModDiff']['Mt2B'][i], metrics['ModDiff']['Wt'][i])
-    # print('NL:\t', metrics['NL'][i])
+    print('NL:\t', metrics['NL'][i])
     print('BW:\t', metrics['BW']['BWRef'][i], metrics['BW']['BWTest'][i])
     print('NMR:\t', metrics['NMR']['NMRavg'][i], metrics['NMR']['NMRmax'][i])
-    # print('PD:\t', metrics['PD']['p'][i], metrics['PD']['q'][i]) # PD.pc, PD.qc ?
+    print('PD:\t', metrics['PD']['p'][i], metrics['PD']['q'][i])
     print('EHS:\t', metrics['EHS'][i] * 1000)
 
 
@@ -27,8 +27,9 @@ def main():
     test, rate = load('test_recons.wav')
     peaq = PEAQ(32768, Fs=rate)
     peaq.process(ref, test)
-    metrics = peaq.get()
-    print(peaq.PQ_avgBW(metrics['BW']['BWRef'], metrics['BW']['BWTest']))
+    metrics_as_frame = peaq.get()
+    metrics = peaq.avg_get()
+    print(metrics)
     # MATLAB CODE OUTPUTS
     # Model Output Variables:
     #     BandwidthRefB: 841.045

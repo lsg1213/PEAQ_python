@@ -304,72 +304,72 @@ class PQEval(object):
         #I don't see why we can't hardcode this:
         Nc = 109
 
-        fl = np.array([  80.000,   103.445,   127.023,   150.762,   174.694, \
-            198.849,   223.257,   247.950,   272.959,   298.317, \
-            324.055,   350.207,   376.805,   403.884,   431.478, \
-            459.622,   488.353,   517.707,   547.721,   578.434, \
-            609.885,   642.114,   675.161,   709.071,   743.884, \
-            779.647,   816.404,   854.203,   893.091,   933.119, \
-            974.336,  1016.797,  1060.555,  1105.666,  1152.187, \
-            1200.178,  1249.700,  1300.816,  1353.592,  1408.094, \
-            1464.392,  1522.559,  1582.668,  1644.795,  1709.021, \
-            1775.427,  1844.098,  1915.121,  1988.587,  2064.590, \
-            2143.227,  2224.597,  2308.806,  2395.959,  2486.169, \
-            2579.551,  2676.223,  2776.309,  2879.937,  2987.238, \
-            3098.350,  3213.415,  3332.579,  3455.993,  3583.817, \
-            3716.212,  3853.817,  3995.399,  4142.547,  4294.979, \
-            4452.890,  4616.482,  4785.962,  4961.548,  5143.463, \
-            5331.939,  5527.217,  5729.545,  5939.183,  6156.396, \
-            6381.463,  6614.671,  6856.316,  7106.708,  7366.166, \
-            7635.020,  7913.614,  8202.302,  8501.454,  8811.450, \
-            9132.688,  9465.574,  9810.536, 10168.013, 10538.460, \
+        fl = np.array([80.000, 103.445, 127.023, 150.762, 174.694, \
+            198.849, 223.257, 247.950, 272.959, 298.317, \
+            324.055, 350.207, 376.805, 403.884, 431.478, \
+            459.622, 488.353, 517.707, 547.721, 578.434, \
+            609.885, 642.114, 675.161, 709.071, 743.884, \
+            779.647, 816.404, 854.203, 893.091, 933.119, \
+            974.336, 1016.797, 1060.555, 1105.666, 1152.187, \
+            1200.178, 1249.700, 1300.816, 1353.592, 1408.094, \
+            1464.392, 1522.559, 1582.668, 1644.795, 1709.021, \
+            1775.427, 1844.098, 1915.121, 1988.587, 2064.590, \
+            2143.227, 2224.597, 2308.806, 2395.959, 2486.169, \
+            2579.551, 2676.223, 2776.309, 2879.937, 2987.238, \
+            3098.350, 3213.415, 3332.579, 3455.993, 3583.817, \
+            3716.212, 3853.817, 3995.399, 4142.547, 4294.979, \
+            4452.890, 4616.482, 4785.962, 4961.548, 5143.463, \
+            5331.939, 5527.217, 5729.545, 5939.183, 6156.396, \
+            6381.463, 6614.671, 6856.316, 7106.708, 7366.166, \
+            7635.020, 7913.614, 8202.302, 8501.454, 8811.450, \
+            9132.688, 9465.574, 9810.536, 10168.013, 10538.460, \
             10922.351, 11320.175, 11732.438, 12159.670, 12602.412, \
             13061.229, 13536.710, 14029.458, 14540.103, 15069.295, \
-            15617.710, 16186.049, 16775.035, 17385.420 ])
-        fc = np.array([  91.708,   115.216,   138.870,   162.702,   186.742, \
-            211.019,   235.566,   260.413,   285.593,   311.136, \
-            337.077,   363.448,   390.282,   417.614,   445.479, \
-            473.912,   502.950,   532.629,   562.988,   594.065, \
-            625.899,   658.533,   692.006,   726.362,   761.644, \
-            797.898,   835.170,   873.508,   912.959,   953.576, \
-            995.408,  1038.511,  1082.938,  1128.746,  1175.995, \
-            1224.744,  1275.055,  1326.992,  1380.623,  1436.014, \
-            1493.237,  1552.366,  1613.474,  1676.641,  1741.946, \
-            1809.474,  1879.310,  1951.543,  2026.266,  2103.573, \
-            2183.564,  2266.340,  2352.008,  2440.675,  2532.456, \
-            2627.468,  2725.832,  2827.672,  2933.120,  3042.309, \
-            3155.379,  3272.475,  3393.745,  3519.344,  3649.432, \
-            3784.176,  3923.748,  4068.324,  4218.090,  4373.237, \
-            4533.963,  4700.473,  4872.978,  5051.700,  5236.866, \
-            5428.712,  5627.484,  5833.434,  6046.825,  6267.931, \
-            6497.031,  6734.420,  6980.399,  7235.284,  7499.397, \
-            7773.077,  8056.673,  8350.547,  8655.072,  8970.639, \
-            9297.648,  9636.520,  9987.683, 10351.586, 10728.695, \
+            15617.710, 16186.049, 16775.035, 17385.420])
+        fc = np.array([91.708, 115.216, 138.870, 162.702, 186.742, \
+            211.019, 235.566, 260.413, 285.593, 311.136, \
+            337.077, 363.448, 390.282, 417.614, 445.479, \
+            473.912, 502.950, 532.629, 562.988, 594.065, \
+            625.899, 658.533, 692.006, 726.362, 761.644, \
+            797.898, 835.170, 873.508, 912.959, 953.576, \
+            995.408, 1038.511, 1082.938, 1128.746, 1175.995, \
+            1224.744, 1275.055, 1326.992, 1380.623, 1436.014, \
+            1493.237, 1552.366, 1613.474, 1676.641, 1741.946, \
+            1809.474, 1879.310, 1951.543, 2026.266, 2103.573, \
+            2183.564, 2266.340, 2352.008, 2440.675, 2532.456, \
+            2627.468, 2725.832, 2827.672, 2933.120, 3042.309, \
+            3155.379, 3272.475, 3393.745, 3519.344, 3649.432, \
+            3784.176, 3923.748, 4068.324, 4218.090, 4373.237, \
+            4533.963, 4700.473, 4872.978, 5051.700, 5236.866, \
+            5428.712, 5627.484, 5833.434, 6046.825, 6267.931, \
+            6497.031, 6734.420, 6980.399, 7235.284, 7499.397, \
+            7773.077, 8056.673, 8350.547, 8655.072, 8970.639, \
+            9297.648, 9636.520, 9987.683, 10351.586, 10728.695, \
             11119.490, 11524.470, 11944.149, 12379.066, 12829.775, \
             13294.850, 13780.887, 14282.503, 14802.338, 15341.057, \
-            15899.345, 16477.914, 17077.504, 17690.045 ])
-        fu = np.array([ 103.445,   127.023,   150.762,   174.694,   198.849, \
-            223.257,   247.950,   272.959,   298.317,   324.055, \
-            350.207,   376.805,   403.884,   431.478,   459.622, \
-            488.353,   517.707,   547.721,   578.434,   609.885, \
-            642.114,   675.161,   709.071,   743.884,   779.647, \
-            816.404,   854.203,   893.091,   933.113,   974.336, \
-            1016.797,  1060.555,  1105.666,  1152.187,  1200.178, \
-            1249.700,  1300.816,  1353.592,  1408.094,  1464.392, \
-            1522.559,  1582.668,  1644.795,  1709.021,  1775.427, \
-            1844.098,  1915.121,  1988.587,  2064.590,  2143.227, \
-            2224.597,  2308.806,  2395.959,  2486.169,  2579.551, \
-            2676.223,  2776.309,  2879.937,  2987.238,  3098.350, \
-            3213.415,  3332.579,  3455.993,  3583.817,  3716.212, \
-            3853.348,  3995.399,  4142.547,  4294.979,  4452.890, \
-            4643.482,  4785.962,  4961.548,  5143.463,  5331.939, \
-            5527.217,  5729.545,  5939.183,  6156.396,  6381.463, \
-            6614.671,  6856.316,  7106.708,  7366.166,  7635.020, \
-            7913.614,  8202.302,  8501.454,  8811.450,  9132.688, \
-            9465.574,  9810.536, 10168.013, 10538.460, 10922.351, \
+            15899.345, 16477.914, 17077.504, 17690.045])
+        fu = np.array([103.445, 127.023, 150.762, 174.694, 198.849, \
+            223.257, 247.950, 272.959, 298.317, 324.055, \
+            350.207, 376.805, 403.884, 431.478, 459.622, \
+            488.353, 517.707, 547.721, 578.434, 609.885, \
+            642.114, 675.161, 709.071, 743.884, 779.647, \
+            816.404, 854.203, 893.091, 933.113, 974.336, \
+            1016.797, 1060.555, 1105.666, 1152.187, 1200.178, \
+            1249.700, 1300.816, 1353.592, 1408.094, 1464.392, \
+            1522.559, 1582.668, 1644.795, 1709.021, 1775.427, \
+            1844.098, 1915.121, 1988.587, 2064.590, 2143.227, \
+            2224.597, 2308.806, 2395.959, 2486.169, 2579.551, \
+            2676.223, 2776.309, 2879.937, 2987.238, 3098.350, \
+            3213.415, 3332.579, 3455.993, 3583.817, 3716.212, \
+            3853.348, 3995.399, 4142.547, 4294.979, 4452.890, \
+            4643.482, 4785.962, 4961.548, 5143.463, 5331.939, \
+            5527.217, 5729.545, 5939.183, 6156.396, 6381.463, \
+            6614.671, 6856.316, 7106.708, 7366.166, 7635.020, \
+            7913.614, 8202.302, 8501.454, 8811.450, 9132.688, \
+            9465.574, 9810.536, 10168.013, 10538.460, 10922.351, \
             11320.175, 11732.438, 12159.670, 12602.412, 13061.229, \
             13536.710, 14029.458, 14540.103, 15069.295, 15617.710, \
-            16186.049, 16775.035, 17385.420, 18000.000 ])
+            16186.049, 16775.035, 17385.420, 18000.000])
         
         return Nc, fc, fl, fu, dz
 
@@ -403,12 +403,12 @@ class PQEval(object):
         c = 1.07664
         e = 0.23
         E0 = 1e4
-        Et = self.PQ_enThresh(self.fc)
+        self.Et = self.PQ_enThresh(self.fc)
         s = self.PQ_exIndex(self.fc)
-        Ets = c * (Et / (s * E0)) ** e
+        Ets = c * (self.Et / (s * E0)) ** e
 
         
-        sN = np.sum(np.maximum(Ets * ((1 - s + s * Ehs / Et) ** e - 1), 0))
+        sN = np.sum(np.maximum(Ets * ((1 - s + s * Ehs / self.Et) ** e - 1), 0))
         Ntot = (24 / self.Nc) * sN
         return Ntot
 
@@ -478,6 +478,10 @@ class PEAQ(object):
 
         #Number of critical bands:
         self.Nc = 109
+        self.P = np.zeros((2, self.Nc))
+        self.Rn = np.zeros((self.Nc))
+        self.Rd = np.zeros((self.Nc))
+        self.PC = np.zeros((2, self.Nc))
 
     def process(self, referenceSignal, testSignal):
         #Preform basic procssing (Section 2 in Kabal.)
@@ -488,7 +492,7 @@ class PEAQ(object):
         sigT = testSignal
 
         #Number of frames:
-        self.Np = (np.floor(len(sigR)/self.Nadv)-1).astype(np.int32)
+        self.Np = (np.floor(len(sigR)/self.Nadv)).astype(np.int32)
         
         #Scale audio:
         if np.amax(abs(sigR)) != self.Amax:
@@ -530,11 +534,12 @@ class PEAQ(object):
         self.BWRef = np.zeros((self.Np,))
         self.BWTest = np.zeros((self.Np,))
 
-        self.PD_p = np.zeros((self.Np, self.Nc))
-        self.PD_q = np.zeros((self.Np, self.Nc))
+        self.PD_p = np.zeros((self.Np))
+        self.PD_q = np.zeros((self.Np))
         self.MDiff_Mt1B = np.zeros((self.Np))
         self.MDiff_Mt2B = np.zeros((self.Np))
         self.MDiff_Wt = np.zeros((self.Np))
+        self.NLoud_NL = np.zeros((self.Np))
         
         self.EHS = np.zeros((self.Np,))
 
@@ -545,6 +550,10 @@ class PEAQ(object):
         for i in np.arange(self.Np):
             xR = sigRS[startS:self.NF+startS]
             xT = sigTS[startS:self.NF+startS]
+            if xR.shape[-1] < self.NF:
+                xR = np.pad(xR, (0, self.NF - xR.shape[-1]))
+            if xT.shape[-1] < self.NF:
+                xT = np.pad(xT, (0, self.NF - xT.shape[-1]))
             startS = startS+self.Nadv
 
             #Store unmodified windows of audio:
@@ -568,25 +577,240 @@ class PEAQ(object):
             self.EhsR[i,:], previousFrameR = self.PQE.PQ_timeSpread(self.EsMatR[i,:], previousFrameR)
             self.EhsT[i,:], previousFrameT = self.PQE.PQ_timeSpread(self.EsMatT[i,:], previousFrameT)
 
+            EP = self.PQadapt(self.EhsR[i], self.EhsT[i], 'FFT')
             M, ERavg = self.PQE.PQmodPatt()
             self.loud_NRef[i] = self.PQE.PQloud(self.EhsR[i,:])
             self.loud_NTest[i] = self.PQE.PQloud(self.EhsT[i,:])
 
             self.MDiff_Mt1B[i], self.MDiff_Mt2B[i], self.MDiff_Wt[i] = self.PQE.PQmovModDiffB(M, ERavg)
+
+            self.NLoud_NL[i] = self.PQmovNLoudB(M, EP)
+
             self.BWRef[i], self.BWTest[i] = self.computeBW(self.X2MatR[i], self.X2MatT[i])
 
-            self.PD_p[i], self.PD_q[i] = self.PQE.PQmovPD(self.EhsR[i,:], self.EhsT[i,:])
+            PD_p, PD_q = self.PQE.PQmovPD(self.EhsR[i,:], self.EhsT[i,:])
+            self.PD_p[i], self.PD_q[i] = self.PQ_ChanPD(PD_p, PD_q)
 
             self.EHS[i] = self.PQmovEHS(xR, xT, X2)
         self.NMRavg, self.NMRmax = self.computeNMR(self.EbNMat, self.EhsR)
 
+    def PQ_ChanPD(self, p, q):
+        Pr = 1
+        Qc = 0
+        for m in range(self.Nc):
+            Pr *= 1 - p[m]
+            Qc += q[m]
+        Pc = 1 - Pr
+        return Pc, Qc
+
     def get(self):
         return {'Ntot': {'NRef': self.loud_NRef, 'NTest': self.loud_NTest},
                 'ModDiff': {'Mt1B': self.MDiff_Mt1B, 'Mt2B': self.MDiff_Mt2B, 'Wt': self.MDiff_Wt},
+                'NL': self.NLoud_NL,
                 'BW': {'BWRef': self.BWRef, 'BWTest': self.BWTest},
                 'NMR': {'NMRavg': self.NMRavg, 'NMRmax': self.NMRmax},
                 'PD': {'p': self.PD_p, 'q': self.PD_q},
                 'EHS': self.EHS}
+
+    def PQadapt(self, EhsR, EhsT, Mod='FFT'):
+        if Mod != 'FFT':
+            raise ValueError(f'Mod only supports FFT, but {Mod}')
+        
+        Fs = 48000
+        Fss = Fs / self.Nadv
+        t100 = 0.050
+        tmin = 0.008
+        a, b = self.PQE.PQtConst(t100, tmin, self.PQE.fc, Fss)
+        M1, M2 = 3, 4
+
+        EP = np.zeros((2, self.Nc))
+        R = np.zeros((2, self.Nc))
+
+        self.P = np.expand_dims(a,-2) * self.P + np.expand_dims(b,-2) * np.stack([EhsR, EhsT])
+        sn = np.sum(np.sqrt(self.P[...,0,:] * self.P[...,1,:]), -1)
+        sd = np.sum(self.P[...,1,:], -1)
+
+        CL = (sn / sd) ** 2
+        cond = CL > 1
+        EP[0] = np.where(cond, EhsR / CL, EhsR)
+        EP[1] = np.where(cond, EhsT, EhsT * CL)
+
+        self.Rn = a * self.Rn + EP[1] * EP[0]
+        self.Rd = a * self.Rd + EP[0] ** 2
+
+        cond = self.Rn >= self.Rd
+        R[0] = np.where(cond, 1, self.Rn / self.Rd)
+        R[1] = np.where(cond, self.Rd / self.Rn, 1)
+        
+        for m in range(self.Nc):
+            iL = max(m - M1, 0)
+            iU = min(m + M2, self.Nc-1)
+            s1 = np.sum(R[0,iL:iU+1], -1)
+            s2 = np.sum(R[1,iL:iU+1], -1)
+
+            self.PC[0,m] = a[m] * self.PC[0,m] + b[m] * s1 / (iU-iL+1)
+            self.PC[1,m] = a[m] * self.PC[1,m] + b[m] * s2 / (iU-iL+1)
+
+            EP[0,m] *= self.PC[0,m]
+            EP[1,m] *= self.PC[1,m]
+        return EP
+
+    def avg_get(self):
+        self.avgBWRef, self.avgBWTest = self.PQ_avgBW(self.BWRef, self.BWTest)
+        self.totalNMRB, self.relDistFramesB = self.PQ_avgNMRB(self.NMRavg, self.NMRmax)
+
+        tdel = 0.5
+        Fss = self.Fs / self.Nadv
+        N500ms = np.ceil(tdel * Fss)
+        Nwup = 0
+        Ndel = np.maximum(np.zeros_like(N500ms), N500ms - Nwup)
+        tex = 0.05
+        
+        self.WinModDiff1B, self.AvgModDiff1B, self.AvgModDiff2B = self.PQ_avgModDiffB(Ndel, self.MDiff_Mt1B, self.MDiff_Mt2B, self.MDiff_Wt)
+        self.ADBB, self.MFPDB = self.PQ_avgPD(self.PD_p, self.PD_q)
+
+        N50ms = np.ceil(tex * Fss)
+        Nloud = self.PQloudTest(self.loud_NRef, self.loud_NTest)
+        Ndel = max(Nloud + N50ms, Ndel)
+        self.RmsNoiseLoudB = self.PQ_avgNLoudB(Ndel, self.NLoud_NL)
+        self.EHSB = self.PQ_avgEHS(self.EHS)
+        self.ODG = self.PQnNetB([self.avgBWRef, self.avgBWTest, self.totalNMRB, self.WinModDiff1B, self.ADBB, self.EHSB, self.AvgModDiff1B, self.AvgModDiff2B, self.RmsNoiseLoudB, self.MFPDB, self.relDistFramesB])
+        return {'BW': {'BWRef': self.avgBWRef, 'BWTest': self.avgBWTest},
+                'NMR': {'totalNMRB': self.totalNMRB, 'relDistFramesB': self.relDistFramesB},
+                'WinModDiff1B': self.WinModDiff1B,
+                'AvgModDiff1B': self.AvgModDiff1B,
+                'AvgModDiff2B': self.AvgModDiff2B,
+                'ODG': self.ODG
+                }
+
+    def PQnNetB(self, MOV):
+        output = self.NNetPar('Basic')
+        amin, amax, wx, wxb, wy, wyb, bmin, bmax = list(map(np.array, output))
+        MOV = np.array(MOV)
+        I, J = wx.shape
+
+        MOVx = (MOV - amin) / (amax - amin)
+        DI = wyb
+        for j in range(J):
+            arg = wxb[j]
+            for i in range(I):
+                arg += wx[i,j] * MOVx[i]
+            DI += wy[j] * self.sigmoid(arg)
+        ODG = bmin + (bmax - bmin) * self.sigmoid(DI)
+        return ODG
+        
+    @staticmethod
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+    
+    @staticmethod
+    def NNetPar(Version):
+        if Version == 'Basic':
+            amin = [393.916656, 361.965332, -24.045116, 1.110661, -0.206623, 0.074318, 1.113683, 0.950345, 0.029985, 0.000101, 0]
+            amax = [921, 881.131226, 16.212030, 107.137772, 2.886017,
+                13.933351, 63.257874, 1145.018555, 14.819740, 1, 
+                1]
+            wx = [[-0.502657, 0.436333, 1.219602],
+                [4.307481, 3.246017, 1.123743],
+                [4.984241, -2.211189, -0.192096],
+                [0.051056, -1.762424, 4.331315],
+                [2.321580, 1.789971, -0.754560],
+                [-5.303901, -3.452257, -10.814982],
+                [2.730991, -6.111805, 1.519223],
+                [0.624950, -1.331523, -5.955151],
+                [3.102889, 0.871260, -5.922878],
+                [-1.051468, -0.939882, -0.142913],
+                [-1.804679, -0.503610, -0.620456]]
+            wxb = [-2.518254, 0.654841, -2.207228]
+            wy = [-3.817048, 4.107138, 4.629582]
+            wyb = -0.307594
+            bmin = -3.98
+            bmax = 0.22
+        else:
+            amin = [13.298751, 0.041073, -25.018791, 0.061560, 0.024523]
+            amax = [2166.5, 13.24326, 13.46708, 10.226771, 14.224874]
+            wx = [[21.211773, -39.913052, -1.382553, -14.545348, -0.320899],
+                [-8.981803, 19.956049, 0.935389, -1.686586, -3.238586],
+                [1.633830, -2.877505, -7.442935, 5.606502, -1.783120],
+                [6.103821, 19.587435, -0.240284, 1.088213, -0.511314],
+                [11.556344, 3.892028, 9.720441, -3.287205, -11.031250]]
+            wxb = [1.330890, 2.686103, 2.096598, -1.327851, 3.087055]
+            wy = [-4.696996, -3.289959, 7.004782, 6.651897, 4.009144]
+            wyb = -1.360308
+            bmin = -3.98
+            bmax = 0.22
+        return amin, amax, wx, wxb, wy, wyb, bmin, bmax
+
+    def PQ_avgEHS(self, EHS):
+        s = np.sum(self.PQ_LinPosAvg(EHS), -1)
+        return 1000 * s
+
+    @staticmethod
+    def PQ_LinPosAvg(x):
+        return np.mean(x[x >= 0])
+
+    def PQloudTest(self, loud_NRef, loud_NTest):
+        Thr = 0.1
+        Ndel = self.Np
+        Ndel = min(Ndel, self.PQ_Lthresh(Thr, loud_NRef, loud_NTest))
+        return Ndel
+
+    def PQ_Lthresh(self, Thr, loud_NRef, loud_NTest):
+        for i in range(self.Np):
+            if loud_NRef[i] > Thr and loud_NTest[i] > Thr:
+                return i
+        return self.Np
+
+    def PQ_avgNLoudB(self, Ndel, NLoud):
+        x = NLoud[int(Ndel):self.Np]
+        if len(x) == 0:
+            return 0
+        return (np.sum(x ** 2, -1) / len(x)) ** 0.5
+
+    def PQ_avgPD(self, PD_p, PD_q):
+        c0 = 0.9
+        c1 = 1
+        N = PD_p.shape[-1]
+        nd = 0
+        Qsum = 0
+        Pcmax = 0
+        Phc = 0
+        for i in range(N):
+            Phc = c0 * Phc + (1 - c0) * PD_p[...,i]
+            Pcmax = max(Pcmax * c1, Phc)
+            if PD_p[i] > 0.5:
+                nd += 1
+                Qsum += PD_q[i]
+
+        if nd == 0:
+            ADBB = 0
+        elif Qsum > 0:
+            ADBB = np.log10(Qsum / nd)
+        else:
+            ADBB = -0.5
+        
+        MFPDB = Pcmax
+        return ADBB, MFPDB
+
+    def PQmovNLoudB(self, M, EP):
+        alpha = 1.5
+        TF0 = 0.15
+        S0 = 0.5
+        NLmin = 0
+        e = 0.23
+        s = 0
+
+        sref = TF0 * M[0] + S0
+        test = TF0 * M[1] + S0
+        beta = np.exp(-alpha * (EP[1] - EP[0]) / EP[0])
+        tmp = test * EP[1] - sref * EP[0]
+        a = np.maximum(tmp, np.zeros_like(tmp))
+        b = self.PQE.EIN + sref * EP[0] * beta
+        s = np.sum((self.PQE.EIN / test) ** e * ((1 + a / b) ** e - 1))
+        NL = (24 / self.Nc) * s
+        if NL < NLmin:
+            return 0
+        return NL
 
     def computeBW(self, X2MatR, X2MatT):
         fx = 21586
@@ -609,7 +833,7 @@ class PEAQ(object):
         return BWRef, BWTest
 
     def computeNMR(self, EbNMat, EhsR):
-        #Kabal Section ...
+        #Kabal Section
         #Compute NRM for whole time series.
 
         NMRavg = np.zeros(self.Np)
@@ -766,3 +990,49 @@ class PEAQ(object):
         relDistFramesB = np.mean(NMRmax>Tr)
 
         return totalNMRB, relDistFramesB
+
+    def PQ_avgModDiffB(self, Ndel, Mt1B, Mt2B, Wt):
+        NF = 2048
+        Nadv = NF / 2
+        Fs = 48000
+        Ndel = int(Ndel)
+
+        Fss = Fs / Nadv
+        tavg = 0.1
+
+        L = np.floor(tavg * Fss)
+        WinModDiff1B = self.PQ_WinAvg(int(L), Mt1B[Ndel:])
+
+        AvgModDiff1B = self.PQ_WtAvg(Mt1B[Ndel:], Wt[Ndel:])
+        AvgModDiff2B = self.PQ_WtAvg(Mt2B[Ndel:], Wt[Ndel:])
+
+        return WinModDiff1B, AvgModDiff1B, AvgModDiff2B
+
+    @staticmethod
+    def PQ_WinAvg(L, x):
+        N = len(x)
+
+        s = 0
+        for i in range(L-1, N):
+            t = 0
+            for m in range(L):
+                t = t + np.sqrt(x[i-m])
+            s = s + (t / L) ** 4
+        if (N >= L):
+            s = np.sqrt(s / (N - L + 1))
+        return s
+
+    @staticmethod
+    def PQ_WtAvg(x, W):
+        N = len(x)
+
+        s = 0
+        sW = 0
+        for i in range(N):
+            s = s + W[i] * x[i]
+            sW = sW + W[i]
+
+        if (N > 0):
+            s = s / sW
+        return s
+
