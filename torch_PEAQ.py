@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from numpy import ndarray
+import numpy as np
 from tqdm import tqdm
 
 
@@ -18,7 +18,7 @@ class PQEval(object):
         self.NF = NF * torch.ones((), device=self.device, dtype=torch.int)
 
         #Hardcode the louness scalling params:
-        fcLoudness = 1019.5
+        fcLoudness = 1019.5 * torch.ones((), device=self.device, dtype=self.dtype)
         Lp = 92
 
         #Set up the window (including all gains)
@@ -51,7 +51,7 @@ class PQEval(object):
 
         #Precompute for PQ Group:
         self.df = float(self.Fs) / self.NF
-        self.Emin = 1e-12
+        self.Emin = 1e-12 * torch.ones((), device=self.device, dtype=self.dtype)
         
         self.U = torch.zeros((torch.div(self.NF, 2, rounding_mode='floor')+1, self.Nc), device=self.device, dtype=self.dtype)
 
@@ -98,7 +98,6 @@ class PQEval(object):
         self.Es[0,:] = self.PQspreadCB(self.E[0,:])
         self.Es[1,:] = self.PQspreadCB(self.E[1,:])
         
-        import pdb; pdb.set_trace()
         return self.EbN, self.Es
 
     def PQgroupCB(self, X2):
@@ -211,8 +210,8 @@ class PQEval(object):
     #Method to make hanning window, given lenth of window:	
     def PQHannWin(self, NF):
         n = torch.arange(0, NF, device=self.device, dtype=self.dtype)
-        hw = 0.5*(1-torch.cos(2*torch.pi*n/(NF-1)))
-        return hw 
+        hw = 0.5*(1-np.cos(2*torch.pi*n/(NF-1))) # torch.cos and np.cos is different from each other
+        return hw
 
     def PQRFFT (self, x, N, ifn):
         # Calculate the DFT of a real N-point sequence or the inverse
@@ -237,7 +236,6 @@ class PQEval(object):
 
         if (ifn > 0):
             X = torch.fft.fft(x, N)
-            import pdb; pdb.set_trace()
             XR = torch.real(X[0:torch.div(N, 2, rounding_mode='floor')+1])
             XI = torch.imag(X[1:torch.div(N, 2, rounding_mode='floor')-1+1])
             X = torch.cat([XR, XI])
@@ -390,7 +388,6 @@ class PQEval(object):
             self.Eavg = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
             self.check_PQmodPatt = True
         
-        import pdb; pdb.set_trace()
         e = 0.3
         Ee = self.Es ** e
         alpha, beta = alpha[None], beta[None]
@@ -497,9 +494,9 @@ class PEAQ(object):
         # sigR = reference signal	
         # sigT = test signal
 
-        if isinstance(referenceSignal, ndarray):
+        if isinstance(referenceSignal, np.ndarray):
             referenceSignal = torch.from_numpy(referenceSignal).to(self.device).type(self.dtype)
-        if isinstance(testSignal, ndarray):
+        if isinstance(testSignal, np.ndarray):
             testSignal = torch.from_numpy(testSignal).to(self.device).type(self.dtype)
         sigR = referenceSignal
         sigT = testSignal

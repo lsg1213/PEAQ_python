@@ -93,7 +93,6 @@ class PQEval(object):
         self.Es[0,:] = self.PQspreadCB(self.E[0,:])
         self.Es[1,:] = self.PQspreadCB(self.E[1,:])
         
-        import pdb; pdb.set_trace()
         return self.EbN, self.Es
 
     def PQgroupCB(self, X2):
@@ -233,7 +232,6 @@ class PQEval(object):
 
         if (ifn > 0):
             X = np.fft.fft (x, N)
-            import pdb; pdb.set_trace()
             XR = np.real(X[0:N//2+1])
             XI = np.imag(X[1:N//2-1+1])
             X = np.concatenate([XR, XI])
@@ -386,7 +384,6 @@ class PQEval(object):
             self.Eavg = np.zeros((2, self.Nc))
             self.check_PQmodPatt = True
         
-        import pdb; pdb.set_trace()
         e = 0.3
         Ee = self.Es ** e
         alpha, beta = alpha[None], beta[None]

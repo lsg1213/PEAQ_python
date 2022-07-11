@@ -27,7 +27,7 @@ def main():
     ref, rate = load('test_clean.wav')
     test, rate = load('test_recons.wav')
     
-    # # numpy version
+    # numpy version
     # nppeaq = numpy_PEAQ.PEAQ(32768, Fs=rate)
     # nppeaq.process(ref, test)
     # metrics_as_frame = nppeaq.get()
