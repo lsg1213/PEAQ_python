@@ -1,16 +1,21 @@
-import numpy as np
-import time
+import torch
+import torch.nn.functional as F
+from numpy import ndarray
+from tqdm import tqdm
 
 
 '''
 Original code: https://github.com/stephencwelch/Perceptual-Coding-In-Python/tree/master/PEAQPython
 '''
 class PQEval(object):
-    def __init__(self, Amax = 1, Fs= 48000, NF= 2048):
+    def __init__(self, Amax = 1, Fs= 48000, NF= 2048, device=None, dtype=None):
         #Amax is maximum signal amplitude, Fs is sampling frequency
         #Setup parameters and precompute quantities we'll need.
-        self.Fs = Fs
-        self.NF = NF
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.dtype = dtype
+        self.Fs = Fs * torch.ones((), device=self.device, dtype=torch.int)
+        self.NF = NF * torch.ones((), device=self.device, dtype=torch.int)
 
         #Hardcode the louness scalling params:
         fcLoudness = 1019.5
@@ -23,10 +28,10 @@ class PQEval(object):
         self.hw = self.GL*self.PQHannWin(self.NF)
 
         #Precompute frequency vector:
-        self.f = np.linspace(0, self.Fs//2, self.NF//2+1)
+        self.f = torch.linspace(0, torch.div(self.Fs, 2, rounding_mode='floor'), torch.div(self.NF, 2, rounding_mode='floor')+1, device=self.device, dtype=self.dtype)
 
         #Outer and middle ear weighting:
-        self.W2 = self.PQWOME (self.f)
+        self.W2 = self.PQWOME(self.f)
 
         #Critical band constants:
         self.Nc, self.fc, self.fl, self.fu, self.dz = self.PQCB()
@@ -35,25 +40,25 @@ class PQEval(object):
         self.EIN = self.PQIntNoise(self.fc)
 
         #Precompute normalization for frequency spreading:
-        self.Bs = self.PQ_SpreadCB(np.ones(self.Nc), np.ones(self.Nc))
+        self.Bs = self.PQ_SpreadCB(torch.ones(self.Nc, device=self.device, dtype=self.dtype), torch.ones(self.Nc, device=self.device, dtype=self.dtype))
 
         # Allocate storage
-        self.Eb = np.zeros((2, self.Nc))
-        self.Xw2 = np.zeros((2, self.NF//2+1))
-        self.XwN2 = np.zeros(self.NF//2+1)
-        self.E = np.zeros(self.Eb.shape)
-        self.Es = np.zeros((2, self.Nc))
+        self.Eb = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
+        self.Xw2 = torch.zeros((2, torch.div(self.NF, 2, rounding_mode='floor')+1), device=self.device, dtype=self.dtype)
+        self.XwN2 = torch.zeros(torch.div(self.NF, 2, rounding_mode='floor')+1, device=self.device, dtype=self.dtype)
+        self.E = torch.zeros(self.Eb.shape, device=self.device, dtype=self.dtype)
+        self.Es = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
 
         #Precompute for PQ Group:
         self.df = float(self.Fs) / self.NF
         self.Emin = 1e-12
         
-        self.U = np.zeros((self.NF//2+1, self.Nc))
+        self.U = torch.zeros((torch.div(self.NF, 2, rounding_mode='floor')+1, self.Nc), device=self.device, dtype=self.dtype)
 
-        for k in range(self.NF//2+1):
+        for k in range(torch.div(self.NF, 2, rounding_mode='floor')+1):
             for i in range(self.Nc):
-                temp = (np.amin([self.fu[i], (k+0.5)*self.df]) - np.amax([self.fl[i], (k-0.5)*self.df])) / self.df
-                self.U[k, i] = np.amax([0, temp])
+                temp = (torch.amin(torch.stack([self.fu[i], (k+0.5)*self.df])) - torch.amax(torch.stack([self.fl[i], (k-0.5)*self.df]))) / self.df
+                self.U[k, i] = torch.amax(torch.stack([torch.zeros_like(temp), temp]))
 
         # check FLAG, False means first operation
         self.check_PQmodPatt = False
@@ -74,11 +79,11 @@ class PQEval(object):
         # Critical band grouping and frequency spreading
 
         # Outer and middle ear filtering
-        self.Xw2[0,:] = self.W2 * X2[0,0:self.NF//2+1]
-        self.Xw2[1,:] = self.W2 * X2[1,0:self.NF//2+1]
+        self.Xw2[0,:] = self.W2 * X2[0,0:torch.div(self.NF,2, rounding_mode='floor')+1]
+        self.Xw2[1,:] = self.W2 * X2[1,0:torch.div(self.NF,2, rounding_mode='floor')+1]
 
         # Form the difference magnitude signal
-        self.XwN2 = self.Xw2[0,:] - 2*np.sqrt(self.Xw2[0,:]*self.Xw2[1,:]) + self.Xw2[1,:]
+        self.XwN2 = self.Xw2[0,:] - 2*torch.sqrt(self.Xw2[0,:]*self.Xw2[1,:]) + self.Xw2[1,:]
         
         # Group into partial critical bands
         self.Eb[0,:] = self.PQgroupCB(self.Xw2[0,:])
@@ -101,7 +106,7 @@ class PQEval(object):
         # X2 - Squared-magnitude vector (DFT bins)
         # Eb - Excitation vector (fractional critical bands)
 
-        Eb = np.dot(X2,self.U)
+        Eb = torch.mm(X2.unsqueeze(0), self.U).squeeze(0)
         Eb[Eb<self.Emin] = self.Emin
         
         return Eb
@@ -130,9 +135,9 @@ class PQEval(object):
         # Es is the overall spread Bark-domain energy
         #
 
-        aUCEe = np.zeros(self.Nc)
-        Ene = np.zeros(self.Nc)
-        Es = np.zeros(self.Nc)
+        aUCEe = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
+        Ene = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
+        Es = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
         
         # Calculate energy-dependent terms
         aL = 10**(2.7*self.dz)
@@ -168,15 +173,14 @@ class PQEval(object):
         return Es
 
     def PQ_timeSpread(self, Es, Ef):
-        
-        Nadv = self.NF//2
+        Nadv = torch.div(self.NF, 2, rounding_mode='floor')
         Fss = float(self.Fs)/Nadv
         tau_100 = 0.030
         tau_min = 0.008
-        alpha, beta = self.PQtConst(tau_100, tau_min, self.fc, Fss)
+        alpha, _ = self.PQtConst(tau_100, tau_min, self.fc, Fss)
         
         # Allocate storage
-        Ehs = np.zeros(self.Nc)
+        Ehs = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
         # Time domain smoothing
         for i in range(self.Nc):
             Ef[i] = alpha[i]*Ef[i] + (1-alpha[i])*Es[i]
@@ -189,11 +193,11 @@ class PQEval(object):
         #tau_100 = 0.030
         #tau_min = 0.008
         
-        tau = np.zeros(len(fc))
-        alpha = np.zeros(len(fc))
+        tau = torch.zeros(len(fc), device=self.device, dtype=self.dtype)
+        alpha = torch.zeros(len(fc), device=self.device, dtype=self.dtype)
         
-        tau = tau_min + (np.divide(float(100),fc))*(tau_100 - tau_min)
-        alpha = np.exp(np.divide(-1./Fss,tau))
+        tau = tau_min + (torch.divide(float(100),fc))*(tau_100 - tau_min)
+        alpha = torch.exp(torch.divide(-1./Fss,tau))
         beta = 1. - alpha
 
         return alpha, beta
@@ -206,8 +210,8 @@ class PQEval(object):
 
     #Method to make hanning window, given lenth of window:	
     def PQHannWin(self, NF):
-        n = np.arange(0, NF)
-        hw = 0.5*(1-np.cos(2*np.pi*n/(NF-1)))
+        n = torch.arange(0, NF, device=self.device, dtype=self.dtype)
+        hw = 0.5*(1-torch.cos(2*torch.pi*n/(NF-1)))
         return hw 
 
     def PQRFFT (self, x, N, ifn):
@@ -232,11 +236,11 @@ class PQEval(object):
 
 
         if (ifn > 0):
-            X = np.fft.fft (x, N)
+            X = torch.fft.fft(x, N)
             import pdb; pdb.set_trace()
-            XR = np.real(X[0:N//2+1])
-            XI = np.imag(X[1:N//2-1+1])
-            X = np.concatenate([XR, XI])
+            XR = torch.real(X[0:torch.div(N, 2, rounding_mode='floor')+1])
+            XI = torch.imag(X[1:torch.div(N, 2, rounding_mode='floor')-1+1])
+            X = torch.cat([XR, XI])
             return X
         else:
             raise Exception('ifft Not Implemented Yet -SW')
@@ -244,14 +248,14 @@ class PQEval(object):
     def PQRFFTMSq(self, X, N):
         # Calculate the magnitude squared frequency response from the
         # DFT values corresponding to a real signal (assumes N is even)
-
-        X2 = np.zeros(N//2+1)
+        x = torch.div(N, 2, rounding_mode='floor')
+        X2 = torch.zeros(x+1, device=self.device, dtype=self.dtype)
 
         X2[0] = X[0]**2
-        for k in range(N//2-1):
-            X2[k+1] = X[k+1]**2 + X[N//2+k+1]**2
+        for k in range(x-1):
+            X2[k+1] = X[k+1]**2 + X[x+k+1]**2
 
-        X2[N//2] = X[N//2]**2
+        X2[x] = X[x]**2
         return X2
 
     def PQ_GL(self, NF=2048, Amax=1, fcN=1019.5/48000., Lp=92.):
@@ -277,12 +281,12 @@ class PQEval(object):
 
         #Distance to the nearest DFT bin
         df = 1./NF
-        k = np.floor(fcN/df)
+        k = torch.floor(fcN/df)
         
-        dfN = np.amin([(k+1)*df - fcN, fcN -k*df])
+        dfN = torch.amin(torch.stack([(k+1)*df - fcN, fcN -k*df]))
         
         dfW = dfN*W
-        gp = np.sin(np.pi*dfW) / (np.pi*dfW*(1-dfW**2))
+        gp = torch.sin(torch.pi*dfW) / (torch.pi*dfW*(1-dfW**2))
         return gp
 
     def PQWOME(self, f):
@@ -290,22 +294,22 @@ class PQEval(object):
         # Note: The output is a magnitude-squared vector
         
         N = len(f)
-        W2 = np.zeros(N)
+        W2 = torch.zeros(N, device=self.device, dtype=self.dtype)
         
         for k in range(N-1):
-            fkHz = float(f[k+1])/1000
-            AdB = -2.184 * fkHz**(-0.8) + 6.5 * np.exp(-0.6 * (fkHz - 3.3)**2) - 0.001 * fkHz**(3.6)
+            fkHz = f[k+1].type(self.dtype)/1000
+            AdB = -2.184 * fkHz**(-0.8) + 6.5 * torch.exp(-0.6 * (fkHz - 3.3)**2) - 0.001 * fkHz**(3.6)
             W2[k+1] = 10**(AdB / 10)
         return W2
 
     def PQCB(self):
         #Critical band parameters for the FFT model, for Basic Version:
-        dz = 1./4
+        dz = 1./4 * torch.ones((), device=self.device, dtype=self.dtype)
         
         #I don't see why we can't hardcode this:
-        Nc = 109
+        Nc = 109 * torch.ones((), device=self.device, dtype=torch.int)
 
-        fl = np.array([80.000, 103.445, 127.023, 150.762, 174.694, \
+        fl = torch.tensor([80.000, 103.445, 127.023, 150.762, 174.694, \
             198.849, 223.257, 247.950, 272.959, 298.317, \
             324.055, 350.207, 376.805, 403.884, 431.478, \
             459.622, 488.353, 517.707, 547.721, 578.434, \
@@ -326,8 +330,8 @@ class PQEval(object):
             9132.688, 9465.574, 9810.536, 10168.013, 10538.460, \
             10922.351, 11320.175, 11732.438, 12159.670, 12602.412, \
             13061.229, 13536.710, 14029.458, 14540.103, 15069.295, \
-            15617.710, 16186.049, 16775.035, 17385.420])
-        fc = np.array([91.708, 115.216, 138.870, 162.702, 186.742, \
+            15617.710, 16186.049, 16775.035, 17385.420]).to(self.device).type(self.dtype)
+        fc = torch.tensor([91.708, 115.216, 138.870, 162.702, 186.742, \
             211.019, 235.566, 260.413, 285.593, 311.136, \
             337.077, 363.448, 390.282, 417.614, 445.479, \
             473.912, 502.950, 532.629, 562.988, 594.065, \
@@ -348,8 +352,8 @@ class PQEval(object):
             9297.648, 9636.520, 9987.683, 10351.586, 10728.695, \
             11119.490, 11524.470, 11944.149, 12379.066, 12829.775, \
             13294.850, 13780.887, 14282.503, 14802.338, 15341.057, \
-            15899.345, 16477.914, 17077.504, 17690.045])
-        fu = np.array([103.445, 127.023, 150.762, 174.694, 198.849, \
+            15899.345, 16477.914, 17077.504, 17690.045]).to(self.device).type(self.dtype)
+        fu = torch.tensor([103.445, 127.023, 150.762, 174.694, 198.849, \
             223.257, 247.950, 272.959, 298.317, 324.055, \
             350.207, 376.805, 403.884, 431.478, 459.622, \
             488.353, 517.707, 547.721, 578.434, 609.885, \
@@ -370,27 +374,27 @@ class PQEval(object):
             9465.574, 9810.536, 10168.013, 10538.460, 10922.351, \
             11320.175, 11732.438, 12159.670, 12602.412, 13061.229, \
             13536.710, 14029.458, 14540.103, 15069.295, 15617.710, \
-            16186.049, 16775.035, 17385.420, 18000.000])
+            16186.049, 16775.035, 17385.420, 18000.000]).to(self.device).type(self.dtype)
         
         return Nc, fc, fl, fu, dz
 
     def PQmodPatt(self):
-        Nadv = self.NF//2
+        Nadv = torch.div(self.NF, 2, rounding_mode='floor')
         Fss = float(self.Fs)/Nadv
         tau_100 = 0.050
         tau_min = 0.008
         alpha, beta = self.PQtConst(tau_100, tau_min, self.fc, Fss)
         if self.check_PQmodPatt == False:
-            self.DE = np.zeros((2, self.Nc))
-            self.Ese = np.zeros((2, self.Nc))
-            self.Eavg = np.zeros((2, self.Nc))
+            self.DE = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
+            self.Ese = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
+            self.Eavg = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
             self.check_PQmodPatt = True
         
         import pdb; pdb.set_trace()
         e = 0.3
         Ee = self.Es ** e
         alpha, beta = alpha[None], beta[None]
-        self.DE = alpha * self.DE + beta * Fss * np.abs(Ee - self.Ese)
+        self.DE = alpha * self.DE + beta * Fss * torch.abs(Ee - self.Ese)
         self.Eavg = alpha * self.Eavg + beta * Ee
         self.Ese = Ee
         M = self.DE / (1 + self.Eavg / e)
@@ -409,7 +413,7 @@ class PQEval(object):
         Ets = c * (self.Et / (s * E0)) ** e
 
         
-        sN = np.sum(np.maximum(Ets * ((1 - s + s * Ehs / self.Et) ** e - 1), 0))
+        sN = torch.sum(torch.maximum(Ets * ((1 - s + s * Ehs / self.Et) ** e - 1), torch.zeros_like(Ets)))
         Ntot = (24 / self.Nc) * sN
         return Ntot
 
@@ -419,7 +423,7 @@ class PQEval(object):
 
     @staticmethod
     def PQ_exIndex(fc):
-        return 10**((-2 - 2.05 * np.arctan(fc / 4000) - 0.75 * np.arctan((fc / 1600) ** 2)) / 10)
+        return 10**((-2 - 2.05 * torch.arctan(fc / 4000) - 0.75 * torch.arctan((fc / 1600) ** 2)) / 10)
 
     def PQmovModDiffB(self, M, ERavg):
         e = 0.3
@@ -428,15 +432,15 @@ class PQEval(object):
         offset1B = 1.0
         offset2B = 0.01
         levWt = 100
-        
+
         cond = M[0] > M[1]
-        num1B = np.where(cond, M[0] - M[1], M[1] - M[0])
-        num2B = np.where(cond, negWt2B * num1B, num1B)
+        num1B = torch.where(cond, M[0] - M[1], M[1] - M[0])
+        num2B = torch.where(cond, negWt2B * num1B, num1B)
         MD1B = num1B / (offset1B + M[0])
         MD2B = num2B / (offset2B + M[0])
-        s1B = np.sum(MD1B)
-        s2B = np.sum(MD2B)
-        Wt = np.sum(ERavg / (ERavg + levWt * Ete))
+        s1B = torch.sum(MD1B)
+        s2B = torch.sum(MD2B)
+        Wt = torch.sum(ERavg / (ERavg + levWt * Ete))
 
         return (100 / self.Nc) * s1B, (100 / self.Nc) * s2B, Wt
 
@@ -448,113 +452,119 @@ class PQEval(object):
         bP = 4
         bM = 6
 
-        EdBR = 10 * np.log10(EhsR)
-        EdBT = 10 * np.log10(EhsT)
+        EdBR = 10 * torch.log10(EhsR)
+        EdBT = 10 * torch.log10(EhsT)
         edB = EdBR - EdBT
 
         cond = edB > 0
-        L = np.where(cond, 0.3 * EdBR + 0.7 * EdBT, EdBT)
-        b = np.where(cond, bP, bM)
+        L = torch.where(cond, 0.3 * EdBR + 0.7 * EdBT, EdBT)
+        b = torch.where(cond, bP, bM)
 
         cond = L > 0
-        s = np.where(cond, d1 * (d2 / L) ** g + c[0] + L * (c[1] + L * (c[2] + L * (c[3] + L * c[4]))), 1e30)
+        s = torch.where(cond, d1 * (d2 / L) ** g + c[0] + L * (c[1] + L * (c[2] + L * (c[3] + L * c[4]))), 1e30 * torch.ones_like(L))
 
         PD_p = 1 - 0.5 ** ((edB / s) ** b)
-        PD_q = np.abs(edB.astype(np.int)) / s
+        PD_q = torch.abs(edB.type(torch.int)) / s
         return PD_p, PD_q
 
 
 class PEAQ(object):
-    def __init__(self, Amax = 1, Fs = 48000, NF = 2048):
+    def __init__(self, Amax = 1, Fs = 48000, NF = 2048, device=None, dtype=torch.float64):
         # Amax = maximum signal amplitude
         # Fs = sampling frequency
         # NF = Length of analysis window
 
-        self.NF = NF
-        self.Fs = Fs
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.dtype = dtype
+
+        self.NF = NF * torch.ones((), dtype=torch.int, device=self.device)
+        self.Fs = Fs * torch.ones((), dtype=torch.int, device=self.device)
         self.Amax = Amax
 
         #Step forward in half window lengths:
-        self.Nadv = self.NF // 2
+        self.Nadv = torch.div(self.NF, 2, rounding_mode='floor') * torch.ones((), dtype=torch.int, device=self.device)
 
         #Number of critical bands:
-        self.Nc = 109
-        self.P = np.zeros((2, self.Nc))
-        self.Rn = np.zeros((self.Nc))
-        self.Rd = np.zeros((self.Nc))
-        self.PC = np.zeros((2, self.Nc))
+        self.Nc = 109 * torch.ones((), device=self.device, dtype=torch.int)
+        self.P = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
+        self.Rn = torch.zeros((self.Nc), device=self.device, dtype=self.dtype)
+        self.Rd = torch.zeros((self.Nc), device=self.device, dtype=self.dtype)
+        self.PC = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
 
     def process(self, referenceSignal, testSignal):
         #Preform basic procssing (Section 2 in Kabal.)
         # sigR = reference signal	
         # sigT = test signal
 
+        if isinstance(referenceSignal, ndarray):
+            referenceSignal = torch.from_numpy(referenceSignal).to(self.device).type(self.dtype)
+        if isinstance(testSignal, ndarray):
+            testSignal = torch.from_numpy(testSignal).to(self.device).type(self.dtype)
         sigR = referenceSignal
         sigT = testSignal
 
         #Number of frames:
-        self.Np = (np.floor(len(sigR)/self.Nadv)).astype(np.int32)
+        self.Np = (torch.floor(len(sigR)/self.Nadv)).type(torch.int)
         
         #Scale audio:
-        if np.amax(abs(sigR)) != self.Amax:
-            # sigRS = self.Amax*sigR/float(np.amax(abs(sigR)))
-            # sigTS = self.Amax*sigT/float(np.amax(abs(sigT)))
+        if torch.amax(abs(sigR)) != self.Amax:
+            # sigRS = self.Amax*sigR/float(torch.amax(abs(sigR)))
+            # sigTS = self.Amax*sigT/float(torch.amax(abs(sigT)))
             sigRS = sigR
             sigTS = sigT
-            print ('Signals scaled, max reference value = ' + str(np.amax(abs(sigRS))) + ',')
-            print ('and max test value = ' + str(np.amax(abs(sigTS))) +'.')
+            print ('Signals scaled, max reference value = ' + str(torch.amax(abs(sigRS))) + ',')
+            print ('and max test value = ' + str(torch.amax(abs(sigTS))) +'.')
 
         #Instantiate Object to process single frames of data:
-        self.PQE = PQEval(Amax = self.Amax, Fs = self.Fs, NF = self.NF)
+        self.PQE = PQEval(Amax = self.Amax, Fs = self.Fs, NF = self.NF, dtype=self.dtype)
 
         print('Processing Audio...')
         
         #Create empty matrices:
-        X2 = np.zeros((2,self.NF//2+1))
+        X2 = torch.zeros((2, torch.div(self.NF, 2, rounding_mode='floor')+1), device=self.device, dtype=self.dtype)
 
-        self.X2MatR = np.zeros((self.Np, self.NF//2+1))
-        self.X2MatT = np.zeros((self.Np, self.NF//2+1))
+        self.X2MatR = torch.zeros((self.Np, torch.div(self.NF, 2, rounding_mode='floor')+1), device=self.device, dtype=self.dtype)
+        self.X2MatT = torch.zeros((self.Np, torch.div(self.NF, 2, rounding_mode='floor')+1), device=self.device, dtype=self.dtype)
 
-        self.EbNMat = np.zeros((self.Np, self.Nc))
-        self.EsMatR = np.zeros((self.Np, self.Nc))
-        self.EsMatT = np.zeros((self.Np, self.Nc))
+        self.EbNMat = torch.zeros((self.Np, self.Nc), device=self.device, dtype=self.dtype)
+        self.EsMatR = torch.zeros((self.Np, self.Nc), device=self.device, dtype=self.dtype)
+        self.EsMatT = torch.zeros((self.Np, self.Nc), device=self.device, dtype=self.dtype)
 
-        self.EhsR = np.zeros((self.Np, self.Nc))
-        self.EhsT = np.zeros((self.Np, self.Nc))
+        self.EhsR = torch.zeros((self.Np, self.Nc), device=self.device, dtype=self.dtype)
+        self.EhsT = torch.zeros((self.Np, self.Nc), device=self.device, dtype=self.dtype)
 
-        previousFrameR = np.zeros(self.Nc)
-        previousFrameT = np.zeros(self.Nc)
+        previousFrameR = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
+        previousFrameT = torch.zeros(self.Nc, device=self.device, dtype=self.dtype)
 
         #Maybe take this out later, but useful in debugging:
-        self.xMatR = np.zeros((self.Np, self.NF))
-        self.xMatT = np.zeros((self.Np, self.NF))
+        self.xMatR = torch.zeros((self.Np, self.NF), device=self.device, dtype=self.dtype)
+        self.xMatT = torch.zeros((self.Np, self.NF), device=self.device, dtype=self.dtype)
 
-        self.loud_NRef = np.zeros((self.Np,))
-        self.loud_NTest = np.zeros((self.Np,))
+        self.loud_NRef = torch.zeros((self.Np,), device=self.device, dtype=self.dtype)
+        self.loud_NTest = torch.zeros((self.Np,), device=self.device, dtype=self.dtype)
 
-        self.BWRef = np.zeros((self.Np,))
-        self.BWTest = np.zeros((self.Np,))
+        self.BWRef = torch.zeros((self.Np,), device=self.device, dtype=self.dtype)
+        self.BWTest = torch.zeros((self.Np,), device=self.device, dtype=self.dtype)
 
-        self.PD_p = np.zeros((self.Np))
-        self.PD_q = np.zeros((self.Np))
-        self.MDiff_Mt1B = np.zeros((self.Np))
-        self.MDiff_Mt2B = np.zeros((self.Np))
-        self.MDiff_Wt = np.zeros((self.Np))
-        self.NLoud_NL = np.zeros((self.Np))
+        self.PD_p = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
+        self.PD_q = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
+        self.MDiff_Mt1B = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
+        self.MDiff_Mt2B = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
+        self.MDiff_Wt = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
+        self.NLoud_NL = torch.zeros((self.Np), device=self.device, dtype=self.dtype)
         
-        self.EHS = np.zeros((self.Np,))
+        self.EHS = torch.zeros((self.Np,), device=self.device, dtype=self.dtype)
 
         startS = 0
 
-        startTime = time.time()
-
-        for i in np.arange(self.Np):
+        for i in tqdm(torch.arange(self.Np)):
             xR = sigRS[startS:self.NF+startS]
             xT = sigTS[startS:self.NF+startS]
             if xR.shape[-1] < self.NF:
-                xR = np.pad(xR, (0, self.NF - xR.shape[-1]))
+                xR = F.pad(xR, (0, self.NF - xR.shape[-1]))
             if xT.shape[-1] < self.NF:
-                xT = np.pad(xT, (0, self.NF - xT.shape[-1]))
+                xT = F.pad(xT, (0, self.NF - xT.shape[-1]))
             startS = startS+self.Nadv
 
             #Store unmodified windows of audio:
@@ -617,37 +627,36 @@ class PEAQ(object):
         if Mod != 'FFT':
             raise ValueError(f'Mod only supports FFT, but {Mod}')
         
-        Fs = 48000
-        Fss = Fs / self.Nadv
+        Fss = self.Fs / self.Nadv
         t100 = 0.050
         tmin = 0.008
         a, b = self.PQE.PQtConst(t100, tmin, self.PQE.fc, Fss)
-        M1, M2 = 3, 4
+        M1, M2 = 3 * torch.ones((), dtype=torch.int, device=self.device), 4 * torch.ones((), dtype=torch.int, device=self.device)
 
-        EP = np.zeros((2, self.Nc))
-        R = np.zeros((2, self.Nc))
+        EP = torch.zeros((2, self.Nc), dtype=self.dtype)
+        R = torch.zeros((2, self.Nc), dtype=self.dtype)
 
-        self.P = np.expand_dims(a,-2) * self.P + np.expand_dims(b,-2) * np.stack([EhsR, EhsT])
-        sn = np.sum(np.sqrt(self.P[...,0,:] * self.P[...,1,:]), -1)
-        sd = np.sum(self.P[...,1,:], -1)
+        self.P = torch.unsqueeze(a,-2) * self.P + torch.unsqueeze(b,-2) * torch.stack([EhsR, EhsT])
+        sn = torch.sum(torch.sqrt(self.P[...,0,:] * self.P[...,1,:]), -1)
+        sd = torch.sum(self.P[...,1,:], -1)
 
         CL = (sn / sd) ** 2
         cond = CL > 1
-        EP[0] = np.where(cond, EhsR / CL, EhsR)
-        EP[1] = np.where(cond, EhsT, EhsT * CL)
+        EP[0] = torch.where(cond, EhsR / CL, EhsR)
+        EP[1] = torch.where(cond, EhsT, EhsT * CL)
 
         self.Rn = a * self.Rn + EP[1] * EP[0]
         self.Rd = a * self.Rd + EP[0] ** 2
 
         cond = self.Rn >= self.Rd
-        R[0] = np.where(cond, 1, self.Rn / self.Rd)
-        R[1] = np.where(cond, self.Rd / self.Rn, 1)
+        R[0] = torch.where(cond, torch.ones_like(self.Rn), self.Rn / self.Rd)
+        R[1] = torch.where(cond, self.Rd / self.Rn, torch.ones_like(self.Rn))
         
         for m in range(self.Nc):
-            iL = max(m - M1, 0)
-            iU = min(m + M2, self.Nc-1)
-            s1 = np.sum(R[0,iL:iU+1], -1)
-            s2 = np.sum(R[1,iL:iU+1], -1)
+            iL = torch.max(m - M1, torch.zeros_like(M1))
+            iU = torch.min(m + M2, self.Nc-1)
+            s1 = torch.sum(R[0,iL:iU+1], -1)
+            s2 = torch.sum(R[1,iL:iU+1], -1)
 
             self.PC[0,m] = a[m] * self.PC[0,m] + b[m] * s1 / (iU-iL+1)
             self.PC[1,m] = a[m] * self.PC[1,m] + b[m] * s2 / (iU-iL+1)
@@ -662,15 +671,15 @@ class PEAQ(object):
 
         tdel = 0.5
         Fss = self.Fs / self.Nadv
-        N500ms = np.ceil(tdel * Fss)
+        N500ms = torch.ceil(tdel * Fss)
         Nwup = 0
-        Ndel = np.maximum(np.zeros_like(N500ms), N500ms - Nwup)
+        Ndel = torch.maximum(torch.zeros_like(N500ms), N500ms - Nwup)
         tex = 0.05
         
         self.WinModDiff1B, self.AvgModDiff1B, self.AvgModDiff2B = self.PQ_avgModDiffB(Ndel, self.MDiff_Mt1B, self.MDiff_Mt2B, self.MDiff_Wt)
         self.ADBB, self.MFPDB = self.PQ_avgPD(self.PD_p, self.PD_q)
 
-        N50ms = np.ceil(tex * Fss)
+        N50ms = torch.ceil(tex * Fss)
         Nloud = self.PQloudTest(self.loud_NRef, self.loud_NTest)
         Ndel = max(Nloud + N50ms, Ndel)
         self.RmsNoiseLoudB = self.PQ_avgNLoudB(Ndel, self.NLoud_NL)
@@ -686,8 +695,8 @@ class PEAQ(object):
 
     def PQnNetB(self, MOV):
         output = self.NNetPar('Basic')
-        amin, amax, wx, wxb, wy, wyb, bmin, bmax = list(map(np.array, output))
-        MOV = np.array(MOV)
+        amin, amax, wx, wxb, wy, wyb, bmin, bmax = list(map(lambda x: torch.tensor(x, device=self.device, dtype=self.dtype), output))
+        MOV = torch.tensor(MOV, device=self.device, dtype=self.dtype)
         I, J = wx.shape
 
         MOVx = (MOV - amin) / (amax - amin)
@@ -696,13 +705,9 @@ class PEAQ(object):
             arg = wxb[j]
             for i in range(I):
                 arg += wx[i,j] * MOVx[i]
-            DI += wy[j] * self.sigmoid(arg)
-        ODG = bmin + (bmax - bmin) * self.sigmoid(DI)
+            DI += wy[j] * torch.sigmoid(arg)
+        ODG = bmin + (bmax - bmin) * torch.sigmoid(DI)
         return ODG
-        
-    @staticmethod
-    def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
     
     @staticmethod
     def NNetPar(Version):
@@ -743,12 +748,12 @@ class PEAQ(object):
         return amin, amax, wx, wxb, wy, wyb, bmin, bmax
 
     def PQ_avgEHS(self, EHS):
-        s = np.sum(self.PQ_LinPosAvg(EHS), -1)
+        s = torch.sum(self.PQ_LinPosAvg(EHS), -1)
         return 1000 * s
 
     @staticmethod
     def PQ_LinPosAvg(x):
-        return np.mean(x[x >= 0])
+        return torch.mean(x[x >= 0])
 
     def PQloudTest(self, loud_NRef, loud_NTest):
         Thr = 0.1
@@ -766,19 +771,19 @@ class PEAQ(object):
         x = NLoud[int(Ndel):self.Np]
         if len(x) == 0:
             return 0
-        return (np.sum(x ** 2, -1) / len(x)) ** 0.5
+        return (torch.sum(x ** 2, -1) / len(x)) ** 0.5
 
     def PQ_avgPD(self, PD_p, PD_q):
-        c0 = 0.9
-        c1 = 1
+        c0 = 0.9 * torch.ones((), device=self.device, dtype=self.dtype)
+        c1 = torch.ones((), device=self.device, dtype=self.dtype)
+        nd = torch.zeros((), device=self.device, dtype=self.dtype)
+        Qsum = torch.zeros((), device=self.device, dtype=self.dtype)
+        Pcmax = torch.zeros((), device=self.device, dtype=self.dtype)
+        Phc = torch.zeros((), device=self.device, dtype=self.dtype)
         N = PD_p.shape[-1]
-        nd = 0
-        Qsum = 0
-        Pcmax = 0
-        Phc = 0
         for i in range(N):
             Phc = c0 * Phc + (1 - c0) * PD_p[...,i]
-            Pcmax = max(Pcmax * c1, Phc)
+            Pcmax = torch.max(Pcmax * c1, Phc)
             if PD_p[i] > 0.5:
                 nd += 1
                 Qsum += PD_q[i]
@@ -786,7 +791,7 @@ class PEAQ(object):
         if nd == 0:
             ADBB = 0
         elif Qsum > 0:
-            ADBB = np.log10(Qsum / nd)
+            ADBB = torch.log10(Qsum / nd)
         else:
             ADBB = -0.5
         
@@ -803,11 +808,11 @@ class PEAQ(object):
 
         sref = TF0 * M[0] + S0
         test = TF0 * M[1] + S0
-        beta = np.exp(-alpha * (EP[1] - EP[0]) / EP[0])
+        beta = torch.exp(-alpha * (EP[1] - EP[0]) / EP[0])
         tmp = test * EP[1] - sref * EP[0]
-        a = np.maximum(tmp, np.zeros_like(tmp))
+        a = torch.maximum(tmp, torch.zeros_like(tmp))
         b = self.PQE.EIN + sref * EP[0] * beta
-        s = np.sum((self.PQE.EIN / test) ** e * ((1 + a / b) ** e - 1))
+        s = torch.sum((self.PQE.EIN / test) ** e * ((1 + a / b) ** e - 1))
         NL = (24 / self.Nc) * s
         if NL < NLmin:
             return 0
@@ -815,30 +820,30 @@ class PEAQ(object):
 
     def computeBW(self, X2MatR, X2MatT):
         fx = 21586
-        kx = int(round(self.NF * float(fx)/self.Fs)) # 921
+        kx = torch.round(self.NF * float(fx)/self.Fs).type(torch.int) # 921
         fl = 8109
-        kl = int(round(self.NF * float(fl)/self.Fs)) # 346
+        kl = torch.round(self.NF * float(fl)/self.Fs).type(torch.int) # 346
         FRdB = 10 # Ref. signal to exceed threshold level by 10dB
         FR = 10**(FRdB/10.) #added dot to make floating point - SW
         FTdB = 5 # Test signal to exceed threshold level by 5dB
         FT = 10**(FTdB/10.) #added dot to make floating point - SW
         
-        Xth = np.amax(X2MatT[...,kx:-1], -1)
+        Xth = torch.amax(X2MatT[...,kx:-1], -1)
         XthR = FR * Xth
         cond = X2MatR[...,kl+1:kx] >= XthR[...,None]
-        BWRef = (np.arange(kl + 1, cond.shape[-1] + kl + 1)[None] * cond).max(-1) + 1
+        BWRef = (torch.arange(kl + 1, cond.shape[-1] + kl + 1, device=self.device, dtype=self.dtype)[None] * cond).max(-1)[0] + 1
 
         XthT = FT * Xth
         cond = X2MatT[...,:int(BWRef-1)] >= XthT[...,None]
-        BWTest = (np.arange(cond.shape[-1])[None] * cond).max(-1) + 1
+        BWTest = (torch.arange(cond.shape[-1], device=self.device, dtype=self.dtype)[None] * cond).max(-1)[0] + 1
         return BWRef, BWTest
 
     def computeNMR(self, EbNMat, EhsR):
         #Kabal Section
         #Compute NRM for whole time series.
 
-        NMRavg = np.zeros(self.Np)
-        NMRmax = np.zeros(self.Np)
+        NMRavg = torch.zeros(self.Np, device=self.device, dtype=self.dtype)
+        NMRmax = torch.zeros(self.Np, device=self.device, dtype=self.dtype)
 
         for i in range(int(self.Np)):
             NMR = self.PQmovNMRB(EbNMat[i,:], EhsR[i,:])
@@ -857,7 +862,7 @@ class PEAQ(object):
         NMRm = 0
         s = 0
 
-        R_NM = np.zeros(Nc)
+        R_NM = torch.zeros(Nc, device=self.device, dtype=self.dtype)
         
         for k in range(Nc):
             NMRm = EbN[k] / (gm[k] * Ehs[k])
@@ -873,7 +878,7 @@ class PEAQ(object):
         return NMR
 
     def PQ_MaskOffset(self, dz, Nc):
-        gm = np.zeros(Nc)
+        gm = torch.zeros(Nc, device=self.device, dtype=self.dtype)
         for k in range(Nc):
             if (k <= 12./dz):
                 mdB = 3
@@ -883,44 +888,43 @@ class PEAQ(object):
         return gm
 
     def PQmovEHS(self, xR, xT, X2):
-        NF = 2048
-        Nadv = NF // 2
-        Fs = 48000
+        NF = self.NF
+        Nadv = torch.div(NF, 2, rounding_mode='floor')
         Fmax = 9000
-        NL = 2**(self.PQ_log2(NF * Fmax / Fs))
+        NL = 2**(self.PQ_log2(NF * Fmax / self.Fs))
         M = NL
         Hw = (1 / M) * (8 / 3) ** 0.5 * self.PQE.PQHannWin(M)
 
         EnThr = 8000
         kmax = NL + M - 1
 
-        xR, xT = np.copy(xR).astype(np.float64), np.copy(xT).astype(np.float64)
+        xR, xT = torch.clone(xR), torch.clone(xT)
 
-        EnRef  = np.matmul(xR[Nadv:NF+1], xR[Nadv:NF+1].T)
-        EnTest = np.matmul(xT[Nadv:NF+1], xT[Nadv:NF+1].T)
+        EnRef  = torch.matmul(xR[Nadv:NF+1].unsqueeze(0), xR[Nadv:NF+1].unsqueeze(-1)).squeeze()
+        EnTest = torch.matmul(xT[Nadv:NF+1].unsqueeze(0), xT[Nadv:NF+1].unsqueeze(-1)).squeeze()
 
         if EnRef < EnThr and EnTest < EnThr:
             return -1
 
-        D = np.log(X2[1] / X2[0])
+        D = torch.log(X2[1] / X2[0])
         C = self.PQ_Corr(D, NL, M)
 
         Cn = self.PQ_NCorr(C, D, NL, M)
-        Cnm = (1 / NL) * np.sum(Cn[:NL.astype(np.int)+1])
+        Cnm = (1 / NL) * torch.sum(Cn[:NL.type(torch.int)+1])
 
         Cw = Hw * (Cn - Cnm)
 
-        cp = self.PQE.PQRFFT(Cw, NL.astype(np.int), 1)
-        c2 = self.PQE.PQRFFTMSq(cp, NL.astype(np.int))
+        cp = self.PQE.PQRFFT(Cw, NL.type(torch.int), 1)
+        c2 = self.PQE.PQRFFTMSq(cp, NL.type(torch.int))
 
-        EHS = self.PQ_FindPeak(c2, (NL/2+1).astype(np.int))
+        EHS = self.PQ_FindPeak(c2, (NL/2+1).type(torch.int))
         return EHS
 
     def PQ_Corr(self, D, NL, M): # DFT-based operation in original matlab code
-        M = M.astype(np.int)
-        NL = NL.astype(np.int)
+        M = M.type(torch.int)
+        NL = NL.type(torch.int)
 
-        C = np.zeros(NL)
+        C = torch.zeros(NL)
         for i in range(NL):
             s = 0
             for j in range(M):
@@ -930,7 +934,7 @@ class PEAQ(object):
 
     @staticmethod
     def PQ_log2(x):
-        res = np.zeros_like(x)
+        res = torch.zeros_like(x)
         m = 1
         while m < x:
             res = res + 1
@@ -938,9 +942,9 @@ class PEAQ(object):
         return res - 1
 
     def PQ_NCorr(self, C, D, NL, M):
-        NL = NL.astype(np.int)
-        M = M.astype(np.int)
-        Cn = np.zeros((NL,))
+        NL = NL.type(torch.int)
+        M = M.type(torch.int)
+        Cn = torch.zeros((NL,), device=self.device, dtype=self.dtype)
 
         s0 = C[0]
         sj = s0
@@ -963,8 +967,6 @@ class PEAQ(object):
                 cmax = c2[n]
         return cmax
 
-
-
     ## --------------- Averaging -------------------- ##
     ## Time averaging functions for MOVs
     ## Same naming convention as Kabal
@@ -975,8 +977,8 @@ class PEAQ(object):
         # positive values, as far as I can tell...
         # Our implementation is simpler too, becuase we aren't worried about stereo
         # Ok, so these values don't exactly match Octave, but they are pretty close (+)
-        BandwidthRefB = np.mean(BWRef[BWRef >=0])
-        BandwidthTestB = np.mean(BWTest[BWTest >=0])
+        BandwidthRefB = torch.mean(BWRef[BWRef >=0])
+        BandwidthTestB = torch.mean(BWTest[BWTest >=0])
 
         return BandwidthRefB, BandwidthTestB
 
@@ -984,25 +986,23 @@ class PEAQ(object):
         #Average NMR values, we also get another MOV here for free - RelDistFramesB
         #This has been validated against Octave, appears to match very well.
 
-        totalNMRB = 10*np.log10(np.mean(NMRavg))
+        totalNMRB = 10*torch.log10(torch.mean(NMRavg))
 
         #Threshold:
         Tr = 10**(1.5/10)
-        relDistFramesB = np.mean(NMRmax>Tr)
+        relDistFramesB = torch.mean((NMRmax>Tr).type(dtype=self.dtype))
 
         return totalNMRB, relDistFramesB
 
     def PQ_avgModDiffB(self, Ndel, Mt1B, Mt2B, Wt):
         NF = 2048
         Nadv = NF / 2
-        Fs = 48000
         Ndel = int(Ndel)
 
-        Fss = Fs / Nadv
+        Fss = self.Fs / Nadv
         tavg = 0.1
 
-        import pdb; pdb.set_trace()
-        L = np.floor(tavg * Fss)
+        L = torch.floor(tavg * Fss)
         WinModDiff1B = self.PQ_WinAvg(int(L), Mt1B[Ndel:])
 
         AvgModDiff1B = self.PQ_WtAvg(Mt1B[Ndel:], Wt[Ndel:])
@@ -1018,10 +1018,10 @@ class PEAQ(object):
         for i in range(L-1, N):
             t = 0
             for m in range(L):
-                t = t + np.sqrt(x[i-m])
+                t = t + torch.sqrt(x[i-m])
             s = s + (t / L) ** 4
         if (N >= L):
-            s = np.sqrt(s / (N - L + 1))
+            s = torch.sqrt(s / (N - L + 1))
         return s
 
     @staticmethod
