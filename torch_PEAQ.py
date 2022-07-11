@@ -210,7 +210,7 @@ class PQEval(object):
     #Method to make hanning window, given lenth of window:	
     def PQHannWin(self, NF):
         n = torch.arange(0, NF, device=self.device, dtype=self.dtype)
-        hw = 0.5*(1-np.cos(2*torch.pi*n/(NF-1))) # torch.cos and np.cos is different from each other
+        hw = 0.5*(1-torch.cos(2*torch.pi*n/(NF-1))) # torch.cos and np.cos is different from each other
         return hw
 
     def PQRFFT (self, x, N, ifn):
