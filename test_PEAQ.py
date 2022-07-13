@@ -28,22 +28,21 @@ def main():
     test, rate = load('test_recons.wav')
     
     # numpy version
-    # nppeaq = numpy_PEAQ.PEAQ(32768, Fs=rate)
-    # nppeaq.process(ref, test)
-    # metrics_as_frame = nppeaq.get()
-    # npmetrics = nppeaq.avg_get()
-    # print('---------- numpy PEAQ ----------')
-    # print(npmetrics)
+    nppeaq = numpy_PEAQ.PEAQ(32768, Fs=rate)
+    nppeaq.process(ref, test)
+    metrics_as_frame = nppeaq.get()
+    npmetrics = nppeaq.avg_get()
+    print('---------- numpy PEAQ ----------')
+    print(npmetrics)
 
+
+    # pytorch version
     torchpeaq = torch_PEAQ.PEAQ(32768, Fs=rate)
     torchpeaq.process(ref, test)
     metrics_as_frame = torchpeaq.get()
     torchmetrics = torchpeaq.avg_get()
     print('---------- torch PEAQ ----------')
     print(torchmetrics)
-
-
-    # pytorch version
 
     # MATLAB CODE OUTPUTS
     # Model Output Variables:

@@ -630,8 +630,8 @@ class PEAQ(object):
         a, b = self.PQE.PQtConst(t100, tmin, self.PQE.fc, Fss)
         M1, M2 = 3 * torch.ones((), dtype=torch.int, device=self.device), 4 * torch.ones((), dtype=torch.int, device=self.device)
 
-        EP = torch.zeros((2, self.Nc), dtype=self.dtype)
-        R = torch.zeros((2, self.Nc), dtype=self.dtype)
+        EP = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
+        R = torch.zeros((2, self.Nc), device=self.device, dtype=self.dtype)
 
         self.P = torch.unsqueeze(a,-2) * self.P + torch.unsqueeze(b,-2) * torch.stack([EhsR, EhsT])
         sn = torch.sum(torch.sqrt(self.P[...,0,:] * self.P[...,1,:]), -1)
@@ -921,7 +921,7 @@ class PEAQ(object):
         M = M.type(torch.int)
         NL = NL.type(torch.int)
 
-        C = torch.zeros(NL)
+        C = torch.zeros(NL, device=self.device, dtype=self.dtype)
         for i in range(NL):
             s = 0
             for j in range(M):
